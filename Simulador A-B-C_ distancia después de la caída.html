@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<!-- saved from url=(0062)file:///C:/Users/COAR/Downloads/simulador_masa_influye_BC.html -->
+<html lang="es"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Simulador A-B-C: distancia después de la caída</title>
+<style>
+body{font-family:Arial,sans-serif;background:#eef3f8;margin:0;padding:20px;color:#17202a}
+.wrap{max-width:1100px;margin:auto;background:#fff;padding:22px;border-radius:18px;box-shadow:0 6px 25px #0002}
+h1{margin:0 0 7px}.sub{color:#5d6874}
+.controls{display:flex;gap:16px;flex-wrap:wrap;align-items:end;background:#f5f7fa;padding:15px;border-radius:12px}
+label{font-weight:bold}input{display:block;margin-top:6px;padding:9px;border:1px solid #bcc6d1;border-radius:7px}
+button{padding:10px 16px;border:0;border-radius:9px;background:#1769aa;color:white;font-weight:bold;cursor:pointer}
+button.gray{background:#667085}.scene{position:relative;height:380px;margin-top:18px;border:2px solid #cbd5e1;border-radius:15px;overflow:hidden;background:linear-gradient(#dff3ff 0 60%,#a7cf8b 60%)}
+.trackAB{position:absolute;left:8%;top:75px;width:58%;height:13px;background:#555;border-radius:7px;transform-origin:left center}
+.trackBC{position:absolute;left:65.8%;top:284px;width:28%;height:13px;background:#555;border-radius:7px}
+.point{position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;border:5px solid #111;z-index:4}
+.pa{left:7.2%;top:66px}.pb{left:64.8%;top:275px}.pc{left:92.5%;top:275px}
+.lab{position:absolute;background:#fff;border:1px solid #b9c2cc;border-radius:7px;padding:5px 9px;font-weight:bold;z-index:6}
+.la{left:6%;top:30px}.lb{left:62%;top:308px}.lc{right:2%;top:308px}
+#cart{position:absolute;z-index:8;left:7.5%;top:43px;width:48px;height:29px;background:#e53935;border-radius:7px}
+#cart:before,#cart:after{content:"";position:absolute;width:11px;height:11px;background:#222;border-radius:50%;bottom:-7px}
+#cart:before{left:6px}#cart:after{right:6px}
+.ruler{position:absolute;left:65.8%;bottom:40px;width:28%;height:25px;border-top:2px solid #222}
+.tick{position:absolute;top:-7px;width:2px;height:10px;background:#222}.tick span{position:absolute;top:12px;transform:translateX(-50%);font-size:11px}
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:15px}
+.stat{background:#edf4fa;border-radius:10px;padding:11px;text-align:center}.stat b{font-size:19px}
+.status{margin-top:14px;padding:12px;background:#f5f7fa;border-radius:10px;font-weight:bold}
+table{width:100%;border-collapse:collapse;margin-top:18px}th,td{border:1px solid #cbd4dd;padding:8px;text-align:center}th{background:#eef2f6}
+.note{font-size:13px;color:#68737f}
+@media(max-width:850px){.stats{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>🚗 Simulador para medir la distancia después de la caída</h1>
+<p class="sub">El carrito parte en <b>A</b>, baja por la pendiente hasta <b>B</b> y luego continúa por el tramo <b>B → C</b>. La medición principal es la <b>distancia recorrida después de la caída</b>.</p>
+
+<div class="controls">
+<label>Ángulo de la pendiente
+<input id="angle" type="number" value="30" min="5" max="60" step="5"> °</label>
+<label>Longitud A → B
+<input id="ab" type="number" value="1.00" min="0.5" max="10" step="0.10"> m</label>
+<label>Distancia máxima B → C
+<input id="maxBC" type="number" value="5.00" min="1" max="10" step="0.5"> m</label>
+<label>Fricción en B → C
+<input id="friction" type="number" value="0.20" min="0" max="1" step="0.05"></label>
+<label>Masa del carrito
+<input id="mass" type="number" value="100" min="1" max="500" step="1"> g</label>
+<button id="start">▶ Soltar desde A</button>
+<button id="reset" class="gray">↺ Reiniciar</button>
+</div>
+
+<div class="scene">
+<div class="trackAB" id="trackAB" style="transform: rotate(19deg);"></div>
+<div class="trackBC"></div>
+<div class="point pa"></div><div class="point pb"></div><div class="point pc"></div>
+<div class="lab la">A · INICIO</div><div class="lab lb">B · DESPUÉS DE LA CAÍDA</div><div class="lab lc">C · DETENCIÓN</div>
+<div id="cart" style="left: 7.5%; top: 43px;"></div>
+<div class="ruler" id="ruler"></div>
+</div>
+
+<div class="stats">
+<div class="stat">Tramo<br><b id="segment">A → B</b></div>
+<div class="stat">Distancia después de B<br><b><span id="distBC">0.00</span> m</b></div>
+<div class="stat">Tiempo B → C<br><b><span id="timeBC">0.00</span> s</b></div>
+<div class="stat">Velocidad en B<br><b><span id="velB">0.00</span> m/s</b></div>
+<div class="stat">Aceleración B → C<br><b><span id="accBC">0.00</span> m/s²</b></div>
+<div class="stat">Aceleración en AB<br><b><span id="acc">0.00</span> m/s²</b></div>
+<div class="stat">Tiempo total<br><b><span id="totalTime">0.00</span> s</b></div>
+</div>
+
+<div id="status" class="status">Listo. Pulsa «Soltar desde A».</div>
+<p class="note">El tramo B → C se detiene cuando el modelo considera que la fricción ha consumido la velocidad del carrito o cuando alcanza la distancia máxima configurada. Los resultados son simulados. La masa se puede variar de 1 a 500 g. En este modelo, la masa influye en la desaceleración de B → C: al aumentar la masa, disminuye la desaceleración efectiva y cambia la distancia y el tiempo recorridos. La aceleración indicada corresponde únicamente al tramo B → C y se muestra con signo negativo porque representa desaceleración.</p>
+
+<table>
+<thead><tr><th>Ensayo</th><th>Masa (g)</th><th>Ángulo</th><th>AB (m)</th><th>Velocidad en B</th><th>Aceleración en B → C</th><th>Distancia B → C</th><th>Tiempo B → C</th><th>Distancia total A → C</th></tr></thead>
+<tbody id="rows"></tbody>
+</table>
+</div>
+
+<script>
+const angle=document.getElementById('angle'),ab=document.getElementById('ab'),maxBC=document.getElementById('maxBC'),friction=document.getElementById('friction'),mass=document.getElementById('mass');
+const cart=document.getElementById('cart'),trackAB=document.getElementById('trackAB');
+const seg=document.getElementById('segment'),distBC=document.getElementById('distBC'),timeBC=document.getElementById('timeBC'),velB=document.getElementById('velB'),accBC=document.getElementById('accBC'),totalTime=document.getElementById('totalTime'),status=document.getElementById('status');
+let raf=0,trial=0;
+
+function reset(){
+ cancelAnimationFrame(raf); cart.style.left='7.5%';cart.style.top='43px';
+ seg.textContent='A → B';distBC.textContent='0.00';timeBC.textContent='0.00';velB.textContent='0.00';accBC.textContent='0.00';totalTime.textContent='0.00';
+ status.textContent='Listo. Pulsa «Soltar desde A».';
+}
+function run(){
+ cancelAnimationFrame(raf);
+ const theta=+angle.value*Math.PI/180,L1=+ab.value,Lmax=+maxBC.value,mu=+friction.value,m=+mass.value/1000,g=9.81;
+ const a1=g*Math.sin(theta);
+ const t1=Math.sqrt(2*L1/a1);
+ const vB=a1*t1;
+ // Deceleración simulada en tramo horizontal.
+ const baseDecel=Math.max(0.05,mu*1.5);
+  // Modelo con resistencia efectiva: a mayor masa, menor desaceleración en B → C.
+  // Se conserva -0.60 m/s² para 250 g cuando la fricción es 0.20.
+  const decel=Math.max(0.05,baseDecel*(250/+mass.value));
+ const dStop=Math.min(Lmax,vB*vB/(2*decel));
+ const t2=Math.min(vB/decel, dStop>0 ? (2*dStop/vB) : 0);
+ const tTotal=t1+t2;
+ accBC.textContent=(-decel).toFixed(2);velB.textContent=vB.toFixed(2);
+ seg.textContent='A → B';status.textContent='El carrito está bajando por la pendiente…';
+ const start=performance.now(), duration=t1*1000;
+ function frame(now){
+  const elapsed=(now-start)/1000;
+  if(elapsed<t1){
+   const d=.5*a1*elapsed*elapsed,p=d/L1;
+   cart.style.left=(7.5+p*58)+'%';cart.style.top=(43+p*210)+'px';
+   requestAnimationFrame(frame);
+  }else{
+   const t=elapsed-t1;
+   seg.textContent='B → C';status.textContent='Midiendo la distancia después de B…';
+   const d=Math.min(dStop,vB*t-.5*decel*t*t);
+   const p=d/Lmax;
+   cart.style.left=(64+p*29)+'%';cart.style.top='252px';
+   distBC.textContent=d.toFixed(2);timeBC.textContent=t.toFixed(2);totalTime.textContent=elapsed.toFixed(2);
+   if(d<dStop-0.001 && t<t2+0.05) raf=requestAnimationFrame(frame);
+   else{
+    trial++;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${trial}</td><td>${mass.value}</td><td>${angle.value}°</td><td>${L1.toFixed(2)}</td><td>${vB.toFixed(2)} m/s</td><td>${(-decel).toFixed(2)} m/s²</td><td>${dStop.toFixed(2)} m</td><td>${t2.toFixed(2)} s</td><td>${(L1+dStop).toFixed(2)} m</td>`;
+    document.getElementById('rows').appendChild(tr);
+    status.textContent=`Ensayo ${trial} terminado. El carrito recorrió ${dStop.toFixed(2)} m después de B.`;
+   }
+  }
+ }
+ raf=requestAnimationFrame(frame);
+}
+angle.oninput=()=>{trackAB.style.transform=`rotate(${angle.value}deg)`};
+document.getElementById('start').onclick=run;document.getElementById('reset').onclick=reset;
+trackAB.style.transform=`rotate(${angle.value}deg)`;reset();
+</script>
+
+</body></html>
